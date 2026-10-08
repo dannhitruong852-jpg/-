@@ -1,0 +1,34 @@
+name: Export NETEM 50plus
+
+on:
+  push:
+    paths:
+      - ".github/workflows/export-netem-50plus.yml"
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build filtered dataset
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv, json, urllib.request
+          url = "https://raw.githubusercontent.com/exam-data/NETEMVocabulary/master/netem_full_list.json"
+          with urllib.request.urlopen(url, timeout=30) as r:
+              data = json.load(r)["5530考研词汇词频排序表"]
+          rows = [x for x in data if int(x["词频"]) >= 50]
+          with open("netem_50plus.csv", "w", encoding="utf-8-sig", newline="") as f:
+              w = csv.writer(f)
+              w.writerow(["rank", "frequency", "word", "definition", "alternate"])
+              for x in rows:
+                  w.writerow([x["序号"], x["词频"], x["单词"], x.get("释义") or "", x.get("其他拼写") or ""])
+          print("count", len(rows))
+          PY
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: netem-50plus
+          path: netem_50plus.csv
+          retention-days: 1
